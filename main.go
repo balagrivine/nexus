@@ -27,15 +27,28 @@ func listenAndServe() error {
 	defer listener.Close()
 
 	for {
-		logger.Info("Accept a connection request")
-		_, err := listener.Accept()
+		logger.Info("Accept a connection request.")
+		conn, err := listener.Accept()
 		if err != nil {
 			logger.Warn("failed accepting a connection request", err)
 			continue
 		}
+
+		slog.Info("Handle incoming messages.")
+		go handleConnection(conn)
 	}
 
 	return nil
+}
+
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, 10)
+	_, _ = conn.Read(buf)
+
+	conn.Write([]byte("PONG"))
+	// TODO
 }
 
 // Creates and returns a custom Logger instance
