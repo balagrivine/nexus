@@ -1,2 +1,2 @@
-# nexus
-A light-weight HTTP web server written in Go
+# Nexus
+Nexus is a light weight HTTP web server written in Go
