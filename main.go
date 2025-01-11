@@ -44,10 +44,10 @@ func listenAndServe() error {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, 10)
+	buf := make([]byte, 20)
 	_, _ = conn.Read(buf)
 
-	conn.Write([]byte("PONG"))
+	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	// TODO
 }
 
