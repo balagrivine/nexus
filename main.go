@@ -34,7 +34,7 @@ func listenAndServe() error {
 			continue
 		}
 
-		slog.Info("Handle incoming messages.")
+		logger.Info("Handle incoming messages.")
 		go handleConnection(conn)
 	}
 
