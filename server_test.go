@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"testing"
 )
@@ -17,7 +16,6 @@ func TestListenAndServe(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fmt.Println(i)
 			conn, err := net.Dial("tcp", "127.0.0.1:8080")
 			if err != nil {
 				t.Errorf("unable to make a connection to the server %v\n", err)
