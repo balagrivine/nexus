@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 
 var logger *slog.Logger = configLogger()
 
-func listenAndServe() error {
+func ListenAndServe() error {
 
 	const (
 		Port = ":8080"
