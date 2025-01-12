@@ -1,8 +1,9 @@
 package main
 
 import (
-	"net"
+	"bufio"
 	"log/slog"
+	"net"
 	"os"
 )
 
@@ -12,12 +13,13 @@ func main() {
 	}
 }
 
+var logger *slog.Logger = configLogger()
+
 func listenAndServe() error {
 
 	const (
 		Port = ":8080"
 	)
-	logger := configLogger()
 
 	listener, err := net.Listen("tcp", Port)
 	if err != nil {
@@ -42,13 +44,21 @@ func listenAndServe() error {
 }
 
 func handleConnection(conn net.Conn) {
+	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	defer conn.Close()
 
-	buf := make([]byte, 20)
-	_, _ = conn.Read(buf)
+	_, err := rw.ReadString('\n')
+	if err != nil {
+		logger.Error("error reading request from client", slog.Any("error", err))
+	}
 
-	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	// TODO
+	if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
+		logger.Warn("cannot write to connection", slog.Any("error", err))
+	}
+
+	if err = rw.Flush(); err != nil {
+		logger.Warn("failed flush", slog.Any("error", err))
+	}
 }
 
 // Creates and returns a custom Logger instance
