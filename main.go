@@ -1,13 +1,19 @@
 package main
 
 import (
-	"os"
+	_ "os"
 
-	"github.com/balagrivine/server"
+	"github.com/balagrivine/nexus/server"
 )
 
 func main() {
-	if err := server.ListenAndServe(); err != nil {
-		os.Exit(1)
+
+	srv := &server.TCPServer{}
+
+	if err := srv.Run(); err != nil {
+		srv.Close()
 	}
+	//if err := server.ListenAndServe(); err != nil {
+	//	os.Exit(1)
+	//}
 }

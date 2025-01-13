@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"strings"
 	"log/slog"
 	"net"
 	"os"
@@ -9,42 +10,64 @@ import (
 
 var logger *slog.Logger = configLogger()
 
-func ListenAndServe() error {
+type Server interface {
+	Run() error
+	Close() error
+}
 
-	const (
-		Port = ":8080"
-	)
+type TCPServer struct {
+	port string
+	server net.Listener
 
-	listener, err := net.Listen("tcp", Port)
+}
+
+// Run starts the tcp server
+func (t *TCPServer) Run() (err error) {
+
+	t.port = ":8080"
+
+	t.server, err = net.Listen("tcp", t.port)
 	if err != nil {
 		logger.Error("unable to listen to connection on port", slog.Any("error", err))
-		return err
+		return
 	}
-	defer listener.Close()
 
 	for {
 		logger.Info("Accept a connection request.")
-		conn, err := listener.Accept()
+		conn, err := t.server.Accept()
 		if err != nil {
 			logger.Warn("failed accepting a connection request", err)
 			continue
 		}
 
 		logger.Info("Handle incoming messages.")
-		go handleConnection(conn)
+		go t.handleConnection(conn)
 	}
 
-	return nil
+	return
 }
 
-func handleConnection(conn net.Conn) {
+func (t *TCPServer) Close() {
+	// Check for nil value to avoid nil pointer
+	// dereference which causes the program to panic
+	if t.server != nil {
+		t.server.Close()
+	}
+	os.Exit(1)
+}
+
+func (t *TCPServer) handleConnection(conn net.Conn) {
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	defer conn.Close()
 
-	_, err := rw.ReadString('\n')
+	req, err := rw.ReadString('\n')
 	if err != nil {
 		logger.Error("error reading request from client", slog.Any("error", err))
 	}
+
+	// Split the string requests to obtain
+	// HTTP Method and requested path
+	parts := strings.Split(req, " ")
 
 	if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
 		logger.Warn("cannot write to connection", slog.Any("error", err))

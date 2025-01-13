@@ -11,7 +11,7 @@ func TestListenAndServe(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Create a successful client connection", "HTTP/1.1 200 OK\r\n"},
+		{"Create a successful client connection", "HTTP/1.1 200 OK\n"},
 	}
 
 	for _, test := range tests {
@@ -27,7 +27,7 @@ func TestListenAndServe(t *testing.T) {
 			}
 			rw.Flush()
 
-			response, err = rw.ReadString('\n')
+			response, err := rw.ReadString('\n')
 			if err != nil {
 				t.Errorf("error occured receiving response from server %v\n", err)
 			}
