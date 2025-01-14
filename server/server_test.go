@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"net"
+	"log"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestListenAndServe(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Create a successful client connection", "HTTP/1.1 200 OK\n"},
+		{"Create a successful client connection", "405 Not Allowed\n"},
 	}
 
 	for _, test := range tests {
@@ -20,9 +21,13 @@ func TestListenAndServe(t *testing.T) {
 			if err != nil {
 				t.Errorf("unable to make a connection to the server %v\n", err)
 			}
+			if conn == nil {
+				log.Fatalf("unable to make a connection to the server: connection refused")
+			}
+			defer conn.Close()
 
 			rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-			if _, err := rw.WriteString("GET / HTTP/1.1\n"); err != nil {
+			if _, err := rw.WriteString("POST / HTTP/1.1\n"); err != nil {
 				t.Errorf("unable to write to server, %v", err)
 			}
 			rw.Flush()

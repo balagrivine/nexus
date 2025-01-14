@@ -56,18 +56,27 @@ func (t *TCPServer) Close() {
 	os.Exit(1)
 }
 
-func (t *TCPServer) handleConnection(conn net.Conn) {
+func (t *TCPServer) handleConnection(conn net.Conn) error {
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	defer conn.Close()
 
 	req, err := rw.ReadString('\n')
 	if err != nil {
 		logger.Error("error reading request from client", slog.Any("error", err))
+		return err
 	}
 
 	// Split the string requests to obtain
 	// HTTP Method and requested path
 	parts := strings.Split(req, " ")
+	method := parts[0]
+	// requestedPath := parts[1]
+
+	if len(parts) == 3 && method == "POST" {
+		rw.WriteString("405 Not Allowed\n")
+		rw.Flush()
+	}
+
 
 	if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
 		logger.Warn("cannot write to connection", slog.Any("error", err))
@@ -76,6 +85,7 @@ func (t *TCPServer) handleConnection(conn net.Conn) {
 	if err = rw.Flush(); err != nil {
 		logger.Warn("failed flush", slog.Any("error", err))
 	}
+	return nil
 }
 
 // Creates and returns a custom Logger instance
