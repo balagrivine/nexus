@@ -1,19 +1,17 @@
 package main
 
 import (
-	_ "os"
+	"log"
 
 	"github.com/balagrivine/nexus/server"
 )
 
 func main() {
 
-	srv := &server.TCPServer{}
+	httpServer := server.NewHTTPServer("127.0.0.1:8080")
 
-	if err := srv.Run(); err != nil {
-		srv.Close()
+	if err := httpServer.Start(); err != nil {
+		httpServer.Close()
+		log.Fatal(err)
 	}
-	//if err := server.ListenAndServe(); err != nil {
-	//	os.Exit(1)
-	//}
 }

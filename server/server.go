@@ -2,88 +2,84 @@ package server
 
 import (
 	"bufio"
-	"strings"
 	"log/slog"
 	"net"
 	"os"
+	"log"
 )
 
 var logger *slog.Logger = configLogger()
 
-type Server interface {
-	Run() error
-	Close() error
+type HTTPServer struct {
+	ListenAddr string
+	Listener   net.Listener
 }
 
-type TCPServer struct {
-	port string
-	server net.Listener
-
+// Initializes a new instance of the server and returns a pointer to the
+// HTTPServer struct
+func NewHTTPServer(listenAddr string) *HTTPServer {
+	return &HTTPServer{
+		ListenAddr: listenAddr,
+	}
 }
 
-// Run starts the tcp server
-func (t *TCPServer) Run() (err error) {
+// Starts an instance of the HTTP server
+func (srv *HTTPServer) Start() error {
 
-	t.port = ":8080"
-
-	t.server, err = net.Listen("tcp", t.port)
+	listener, err := net.Listen("tcp", srv.ListenAddr)
 	if err != nil {
 		logger.Error("unable to listen to connection on port", slog.Any("error", err))
-		return
-	}
-
-	for {
-		logger.Info("Accept a connection request.")
-		conn, err := t.server.Accept()
-		if err != nil {
-			logger.Warn("failed accepting a connection request", err)
-			continue
-		}
-
-		logger.Info("Handle incoming messages.")
-		go t.handleConnection(conn)
-	}
-
-	return
-}
-
-func (t *TCPServer) Close() {
-	// Check for nil value to avoid nil pointer
-	// dereference which causes the program to panic
-	if t.server != nil {
-		t.server.Close()
-	}
-	os.Exit(1)
-}
-
-func (t *TCPServer) handleConnection(conn net.Conn) error {
-	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	defer conn.Close()
-
-	req, err := rw.ReadString('\n')
-	if err != nil {
-		logger.Error("error reading request from client", slog.Any("error", err))
 		return err
 	}
 
-	// Split the string requests to obtain
-	// HTTP Method and requested path
-	parts := strings.Split(req, " ")
-	method := parts[0]
-	// requestedPath := parts[1]
+	srv.Listener = listener
 
-	if len(parts) == 3 && method == "POST" {
-		rw.WriteString("405 Not Allowed\n")
-		rw.Flush()
+	srv.acceptConnection()
+
+	return nil
+}
+
+func (srv *HTTPServer) acceptConnection() {
+	log.Print("Ready to accept connection")
+	for {
+		conn, err := srv.Listener.Accept()
+		if err != nil {
+			logger.Warn("could not accept connection", slog.Any("error", err))
+			break
+		}
+
+		go srv.handleConnection(conn)
 	}
+	return
+}
 
+// Shuts down the current running instance of the server
+func (srv *HTTPServer) Close() {
+	srv.Listener.Close()
+}
 
-	if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
-		logger.Warn("cannot write to connection", slog.Any("error", err))
-	}
+func (srv *HTTPServer) handleConnection(conn net.Conn) error {
+	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	defer conn.Close()
 
-	if err = rw.Flush(); err != nil {
-		logger.Warn("failed flush", slog.Any("error", err))
+	for {
+		_, err := rw.ReadString('\n')
+		if err != nil {
+			if err.Error() == "EOF" {
+				logger.Info("Connection reset by client")
+				break
+			}
+			logger.Error("error reading request from client", slog.Any("error", err))
+			return err
+		}
+
+		if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
+			logger.Warn("cannot write to connection", slog.Any("error", err))
+		}
+
+		if err = rw.Flush(); err != nil {
+			logger.Warn("failed flush", slog.Any("error", err))
+		}
 	}
 	return nil
 }

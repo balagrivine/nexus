@@ -2,8 +2,8 @@ package server
 
 import (
 	"bufio"
-	"net"
 	"log"
+	"net"
 	"testing"
 )
 
@@ -12,7 +12,7 @@ func TestListenAndServe(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Create a successful client connection", "405 Not Allowed\n"},
+		{"Create a successful client connection", "HTTP/1.1 200 OK\n"},
 	}
 
 	for _, test := range tests {
