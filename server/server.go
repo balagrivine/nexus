@@ -63,7 +63,7 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) error {
 	defer conn.Close()
 
 	for {
-		_, err := rw.ReadString('\n')
+		req, err := rw.ReadString('\n')
 		if err != nil {
 			if err.Error() == "EOF" {
 				logger.Info("Connection reset by client")
@@ -71,6 +71,11 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) error {
 			}
 			logger.Error("error reading request from client", slog.Any("error", err))
 			return err
+		}
+
+		if req == "PING\n" {
+			srv.handlePing(rw)
+			break
 		}
 
 		if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
@@ -82,6 +87,15 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) error {
 		}
 	}
 	return nil
+}
+
+// Responds to a PING request with a PONG
+func (srv *HTTPServer) handlePing(rw *bufio.ReadWriter) {
+	if _, err := rw.WriteString("PONG\n"); err != nil {
+		logger.Warn("cannot write to connection", "error", err)
+	}
+	rw.Flush()
+	return
 }
 
 // Creates and returns a custom Logger instance
