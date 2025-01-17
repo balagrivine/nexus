@@ -2,10 +2,10 @@ package server
 
 import (
 	"bufio"
+	"log"
 	"log/slog"
 	"net"
 	"os"
-	"log"
 )
 
 var logger *slog.Logger = configLogger()
@@ -15,8 +15,8 @@ type HTTPServer struct {
 	Listener   net.Listener
 }
 
-// Initializes a new instance of the server and returns a pointer to the
-// HTTPServer struct
+// NewHTTPServer creates a new nexus server instance
+// This functions accepts the address on which the server is to run
 func NewHTTPServer(listenAddr string) *HTTPServer {
 	return &HTTPServer{
 		ListenAddr: listenAddr,
@@ -34,8 +34,7 @@ func (srv *HTTPServer) Start() error {
 
 	srv.Listener = listener
 
-	srv.acceptConnection()
-
+	go srv.acceptConnection()
 	return nil
 }
 
@@ -45,7 +44,7 @@ func (srv *HTTPServer) acceptConnection() {
 		conn, err := srv.Listener.Accept()
 		if err != nil {
 			logger.Warn("could not accept connection", slog.Any("error", err))
-			break
+			return
 		}
 
 		go srv.handleConnection(conn)
