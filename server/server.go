@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"log"
 	"log/slog"
 	"net"
@@ -13,6 +12,8 @@ var logger *slog.Logger = configLogger()
 type HTTPServer struct {
 	ListenAddr string
 	Listener   net.Listener
+	Ready chan struct{} // Signals server's readiness to accept connection
+	Quit chan struct{} // Signals shutdown
 }
 
 // NewHTTPServer creates a new nexus server instance
@@ -20,6 +21,8 @@ type HTTPServer struct {
 func NewHTTPServer(listenAddr string) *HTTPServer {
 	return &HTTPServer{
 		ListenAddr: listenAddr,
+		Ready: make(chan struct{}),
+		Quit: make(chan struct{}),
 	}
 }
 
@@ -28,73 +31,62 @@ func (srv *HTTPServer) Start() error {
 
 	listener, err := net.Listen("tcp", srv.ListenAddr)
 	if err != nil {
-		logger.Error("unable to listen to connection on port", slog.Any("error", err))
+		logger.Error("unable to listen to connection", slog.Any("error", err))
 		return err
 	}
 
 	srv.Listener = listener
+	close(srv.Ready) // Signal readiness to handle connection
 
-	go srv.acceptConnection()
+	srv.acceptConnection()
+
+	<-srv.Quit // Block until a shutdown signal is received
+	log.Println("Shutting down server...")
+	srv.Listener.Close()
+
 	return nil
 }
 
 func (srv *HTTPServer) acceptConnection() {
-	log.Print("Ready to accept connection")
+	log.Print("Ready to accept connection...")
 	for {
 		conn, err := srv.Listener.Accept()
 		if err != nil {
 			logger.Warn("could not accept connection", slog.Any("error", err))
-			return
+			continue
 		}
 
 		go srv.handleConnection(conn)
 	}
-	return
 }
 
-// Shuts down the current running instance of the server
+// Close signals that the server is shutting down
 func (srv *HTTPServer) Close() {
-	srv.Listener.Close()
+	close(srv.Quit)
 }
 
-func (srv *HTTPServer) handleConnection(conn net.Conn) error {
-	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+func (srv *HTTPServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
-		req, err := rw.ReadString('\n')
+		buffer := make([]byte, 1024)
+		_, err := conn.Read(buffer)
 		if err != nil {
-			if err.Error() == "EOF" {
-				logger.Info("Connection reset by client")
-				break
-			}
-			logger.Error("error reading request from client", slog.Any("error", err))
-			return err
+			res := "HTTP/1.1 500 Internal Server Error\r\n" +
+			"Content-Type: text/plain\r\n" +
+			"Connection: close\r\n\r\n" +
+			"Error reading from connection\n"
+
+			conn.Write([]byte(res))
 		}
 
-		if req == "PING\n" {
-			srv.handlePing(rw)
-			break
-		}
+		res := "HTTP/1.1 200 OK\r\n" +
+		"Content-Type: text/plain\r\n" +
+		"Connection: close\r\n\r\n" +
+		"Hello, World!\n"
 
-		if _, err = rw.WriteString("HTTP/1.1 200 OK\n"); err != nil {
-			logger.Warn("cannot write to connection", slog.Any("error", err))
-		}
-
-		if err = rw.Flush(); err != nil {
-			logger.Warn("failed flush", slog.Any("error", err))
-		}
+		conn.Write([]byte(res))
 	}
-	return nil
-}
-
-// Responds to a PING request with a PONG
-func (srv *HTTPServer) handlePing(rw *bufio.ReadWriter) {
-	if _, err := rw.WriteString("PONG\n"); err != nil {
-		logger.Warn("cannot write to connection", "error", err)
-	}
-	rw.Flush()
-	return
 }
 
 // Creates and returns a custom Logger instance

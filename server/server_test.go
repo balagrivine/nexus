@@ -13,23 +13,21 @@ func TestHTTPServer(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"Connect to the server", "\n", "HTTP/1.1 200 OK\n"},
-		{"Ping the server", "PING\n", "PONG\n"},
-		{"Send a GET request to the server", "GET / HTTP/1.1\n", "HTTP/1.1 200 OK\n"},
+		{"Connect to the server", "GET / HTTP/1.1\r\n", "HTTP/1.1 200 OK\r\n"},
 	}
 
-	ready := make(chan struct{})
 	mockSrv := NewHTTPServer("127.0.0.1:8080")
 
 	// Run the mock server in its goroutine to prevent blocking
 	go func() {
 		if err := mockSrv.Start(); err != nil {
-			t.Errorf("%v\n", err)
+			t.Errorf("Error starting server: %v\n", err)
 			return
 		}
-		close(ready) // Signal that the server is ready
 	}()
-	<-ready // Wait for the server to be ready
+
+	// Wait for server to signal readiness
+	<-mockSrv.Ready
 
 	t.Cleanup(func() {
 		mockSrv.Close()
