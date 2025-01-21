@@ -3,10 +3,10 @@
 package http
 
 import (
-	"net"
-	"strings"
+	"bytes"
+	"errors"
+	"io"
 )
-
 
 // A Request representsan HTTP request received
 // by the server
@@ -22,20 +22,35 @@ type Request struct {
 
 	//Body is the request's body
 	Body io.ReadCloser
+
+	// The request path
+	Path string
+
+	// proto is the HTTP protocol used in the request
+	Proto string
 }
 
-// parseRequestLine parses "GET /foo HTTP/1.1" into its three parts.
-func parseRequestLine(line string) (method, path, proto string, ok bool) {
-	method, rest, ok1 := strings.Cut(line, " ")
-	requestURI, proto, ok2 := strings.Cut(rest, " ")
-	if !ok1 || !ok2 {
-		return "", "", "", false
+func Decode(content []byte) (*Request, error) {
+	data := bytes.Split(content, []byte("\n"))
+	// TODO headers := make(map[string]string)
+
+	requestLine := bytes.Split(data[0], SPACE)
+	method := requestLine[0]
+	path := requestLine[1]
+	proto := requestLine[2]
+
+	if !validMethod(method) {
+		return nil, errors.New("invalid method")
 	}
 
-	return method, requestURI, proto, true
+	return &Request{
+		Method: string(method),
+		Path:   string(path),
+		Proto:  string(proto),
+	}, nil
+
 }
 
-func validMethod(method string) bool {
-	return len(method) > 0
+func validMethod(method []byte) bool {
+	return string(method) == "GET"
 }
-

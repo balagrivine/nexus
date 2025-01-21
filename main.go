@@ -24,5 +24,5 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
 	<-signalChan // Block until an interupt signal is received
-	httpServer.Close()
+	httpServer.ShutDown()
 }

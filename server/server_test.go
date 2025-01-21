@@ -30,7 +30,7 @@ func TestHTTPServer(t *testing.T) {
 	<-mockSrv.Ready
 
 	t.Cleanup(func() {
-		mockSrv.Close()
+		mockSrv.ShutDown()
 	})
 
 	for _, test := range tests {

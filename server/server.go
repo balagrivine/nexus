@@ -1,10 +1,15 @@
 package server
 
 import (
+	"errors"
 	"log"
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
+
+	_ "github.com/balagrivine/nexus/server/http"
 )
 
 var logger *slog.Logger = configLogger()
@@ -12,8 +17,8 @@ var logger *slog.Logger = configLogger()
 type HTTPServer struct {
 	ListenAddr string
 	Listener   net.Listener
-	Ready chan struct{} // Signals server's readiness to accept connection
-	Quit chan struct{} // Signals shutdown
+	Ready      chan struct{} // Signals server's readiness to accept connection
+	Quit       chan struct{} // Signals shutdown
 }
 
 // NewHTTPServer creates a new nexus server instance
@@ -21,8 +26,8 @@ type HTTPServer struct {
 func NewHTTPServer(listenAddr string) *HTTPServer {
 	return &HTTPServer{
 		ListenAddr: listenAddr,
-		Ready: make(chan struct{}),
-		Quit: make(chan struct{}),
+		Ready:      make(chan struct{}),
+		Quit:       make(chan struct{}),
 	}
 }
 
@@ -47,6 +52,10 @@ func (srv *HTTPServer) Start() error {
 	return nil
 }
 
+// Close signals that the server is shutting down
+func (srv *HTTPServer) ShutDown() {
+	close(srv.Quit)
+}
 func (srv *HTTPServer) acceptConnection() {
 	log.Print("Ready to accept connection...")
 	for {
@@ -60,32 +69,86 @@ func (srv *HTTPServer) acceptConnection() {
 	}
 }
 
-// Close signals that the server is shutting down
-func (srv *HTTPServer) Close() {
-	close(srv.Quit)
-}
-
 func (srv *HTTPServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, 6048)
 		_, err := conn.Read(buffer)
 		if err != nil {
-			res := "HTTP/1.1 500 Internal Server Error\r\n" +
-			"Content-Type: text/plain\r\n" +
-			"Connection: close\r\n\r\n" +
-			"Error reading from connection\n"
-
-			conn.Write([]byte(res))
+			//TODO
 		}
 
-		res := "HTTP/1.1 200 OK\r\n" +
-		"Content-Type: text/plain\r\n" +
-		"Connection: close\r\n\r\n" +
-		"Hello, World!\n"
+		//data := buffer[:n]
+		//fmt.Println(string(data))
+		//response := http.GetResponseWriter(conn)
+		//_, err = http.Decode(data)
+		//if err != nil {
+		//	response.Send([]byte("Invalid Method"), http.HTTP_405_NOT_ALLOWED)
+		//}
 
-		conn.Write([]byte(res))
+		//respBody := []byte("Hello World!")
+		//response.AddHeader("Content-Type", "text/plain")
+		//response.AddHeader("Content-Length", string(len(respBody)))
+		//response.AddHeader("Content-Type", "text/plain")
+		//response.AddHeader("Accept-Ranges", "bytes")
+
+		//response.Send(respBody, http.HTTP_200_OK)
+		conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World\r\n"))
+		return
+	}
+}
+
+func processFilePath(path string) (*os.File, int64, string, error) {
+	// Root directory from which to serve files
+	// Any directory access out of the rootDir should not be permitted
+	rootDir := "www"
+
+	cleanPath := filepath.Clean(path)
+	path = filepath.Join(rootDir, cleanPath)
+
+	// Serve the default HTML file if only directory name is provided
+	if strings.HasSuffix(path, "/") {
+		path = filepath.Join(path, "index.html")
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || info.IsDir() {
+		return nil, 0, "", errors.New("Not found")
+	}
+
+	contentType := getContentType(path)
+	fileSize := info.Size()
+
+	return file, fileSize, contentType, nil
+}
+
+func getContentType(filePath string) string {
+	ext := filepath.Ext(filePath)
+
+	switch ext {
+	case ".html":
+		return "text/html"
+	case ".text":
+		return "text/txt"
+	case ".css":
+		return "text/css"
+	case ".js":
+		return "application/javascript"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	default:
+		return "application/octet-stream"
 	}
 }
 
