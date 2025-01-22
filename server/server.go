@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	_ "fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -9,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	_ "github.com/balagrivine/nexus/server/http"
+	"github.com/balagrivine/nexus/server/http"
 )
 
 var logger *slog.Logger = configLogger()
@@ -74,27 +75,29 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 
 	for {
 		buffer := make([]byte, 6048)
-		_, err := conn.Read(buffer)
+		bytesRead, err := conn.Read(buffer)
 		if err != nil {
 			//TODO
 		}
 
-		//data := buffer[:n]
-		//fmt.Println(string(data))
-		//response := http.GetResponseWriter(conn)
-		//_, err = http.Decode(data)
-		//if err != nil {
-		//	response.Send([]byte("Invalid Method"), http.HTTP_405_NOT_ALLOWED)
-		//}
+		data := buffer[:bytesRead]
+		response := http.GetResponseWriter(conn)
+		_, err = http.Decode(data)
+		if err != nil {
+			response.Send([]byte("Invalid Method"), http.HTTP_405_NOT_ALLOWED)
+			break
+		}
 
-		//respBody := []byte("Hello World!")
-		//response.AddHeader("Content-Type", "text/plain")
-		//response.AddHeader("Content-Length", string(len(respBody)))
-		//response.AddHeader("Content-Type", "text/plain")
-		//response.AddHeader("Accept-Ranges", "bytes")
+		respBody := []byte("Hello World!")
 
-		//response.Send(respBody, http.HTTP_200_OK)
-		conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World\r\n"))
+		response.AddHeader("Content-Type", "text/plain")
+		response.AddHeader("Accept-Ranges", "bytes")
+		response.AddHeader("Connection", "keep-alive")
+
+		if err := response.Send(respBody, http.HTTP_200_OK); err != nil {
+			logger.Warn("Error writing response", "error", err)
+			break
+		}
 		return
 	}
 }

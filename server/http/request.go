@@ -31,7 +31,7 @@ type Request struct {
 }
 
 func Decode(content []byte) (*Request, error) {
-	data := bytes.Split(content, []byte("\n"))
+	data := bytes.Split(content, CRLF)
 	// TODO headers := make(map[string]string)
 
 	requestLine := bytes.Split(data[0], SPACE)
