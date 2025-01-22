@@ -27,7 +27,9 @@ type Response struct {
 func GetResponseWriter(conn net.Conn) *Response {
 	return &Response{
 		conn: conn,
-		headers: make(map[string]string),
+		headers: map[string]string {
+			"Server": "nexus (Ubuntu)",
+		},
 		status: HTTP_200_OK,
 	}
 }
@@ -41,12 +43,13 @@ func (r *Response) AddHeader(key string, value string) {
 }
 
 func (r *Response) write(content []byte) error {
-	defer r.conn.Close()
-
 	data := encode(content, r.status, r.headers)
-	if _, err := r.conn.Write(data); err != nil {
+	
+	_, err := r.conn.Write(data)
+	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -71,6 +74,7 @@ func encode(data []byte, status HTTPStatus, headers map[string]string) []byte {
 	response = append(response, CRLF...)
 	response = append(response, data...)
 
+	fmt.Println(string(response))
 	return response
 }
 
@@ -79,4 +83,5 @@ func appendHeaders(response *[]byte, headers map[string]string) {
 		header := fmt.Sprintf("%s: %s\r\n", key, val)
 		*response = append(*response, []byte(header)...)
 	}
+	fmt.Println(headers)
 }
