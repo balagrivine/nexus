@@ -2,7 +2,7 @@
 Nexus is a light weight HTTP web server written in Go
 
 ## Getting Started
-Drawing inpiration from the net/http package in the standard library, nexus aims to be an educative-oriented attempt to understand socket programming with Go
+Drawing inpiration from nginx and caddy web server, nexus aims to be an educative-oriented attempt to understand socket programming with Go
 Nexus uses the net package provided by the standard library to create sockets and establish connections with clients.
 
 ## Learning Outcomes
