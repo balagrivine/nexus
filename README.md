@@ -3,24 +3,25 @@
 ## Table of content
 1. [About](#about)
 2. [Getting started](#getting-started)
-3. [Architecture](#architecture)
-   1. [How nexus supports concurrent connection handling](#how-nexus-supports-concurrent-connection-handling)
-4. [Feature checklist](#feature-checklist)
-5. [Learning objectives](#learning-objectives)
-6. [Reference](#reference)
+3. [Example request handling](#example-request-handling)
+4. [Architecture](#architecture)
+   * [How nexus supports concurrent connection handling](#how-nexus-supports-concurrent-connection-handling)
+5. [Feature checklist](#feature-checklist)
+6. [Learning objectives](#learning-objectives)
+7. [Reference](#reference)
 
 # About
 Nexus is a minimalistic light-weight static HTTP web server built with golang'.
 It closely follows the HTTP protocol as described under the [RFC document](https://www.rfc-editor.org/rfc/rfc9110.html).
 
 Eventhough inspired by Caddy and Nginx, Nexus doesn't aim to be as performant as Nginx or easily configurable as Caddy, rather it aim builds upon the fundamental
-HTTP and TCP concepts, laying a good ground for someone who wants to learn how web servers work y supporting a small subset of features provided by a static web server.
+HTTP and TCP concepts, laying a good ground for someone who wants to learn how web servers work by supporting a small subset of features provided by a static web server.
 
 # Getting Started
 Currently, Nexus only supports static file serving with possibility of extension to support dynamic routing.
 Also, I am aiming to provide configuration support such as Caddfile provided by Caddy server to enable users configure nexus as per their use case.
 
-## Example usage
+## Example request handling
 ```shell
 curl localhost:8080
 ```
@@ -60,16 +61,50 @@ curl localhost:8080
     <p><em>Thank you for using nexus.</e
 ```
 
-All requests made to non-specific location are routed to `index.html` by default.
+# Quick start
+```go
+package main
+
+import (
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/balagrivine/nexus/server"
+)
+
+func main() {
+	httpServer := server.NewHTTPServer("127.0.0.1:8080")
+
+	if err := httpServer.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	<-httpServer.Ready
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
+	<-signalChan
+	httpServer.ShutDown()
+}
+```
+
+By default, nexus run on port 8080. you can modify this within the `main.go` file.
+
+Running `go run main.go` will start the httpserver at default port 8080.
+
+To exit the entire system, simply press `CTRL + C` on your keyboard which will send an os interupt signal to the signalChan and the server will gracefully shutdown, releasing any resources before exit.
 
 # Architecture
 
 ## How nexus supports concurrent connection handling
-Nexus server requests similar to golang inbuild http server, by leveraging on goroutines. when the server starts, 3 it listens to connections on the address provided during startup. Three notifying channels(Done, Quit, and signalChan) are initialized. The Done channel is used to notify that the server has successfully started and it can begin accepting connections.
+Nexus does request handling similar to golang's inbuild http server, by leveraging on goroutines. When the server starts, it listens to connections on the pre-configured address. Three notifying channels(Done, Quit, and signalChan) are initialized. The Done channel is used to notify that the server has successfully started and it can begin accepting connections.
 
-This is done because connection accepting is done by a goroutine, so we don't want any operation to proceed before the server is properly initialized which would cause the `connection refused` error whn clients try to connect.
+This is done because connection accepting is done by a goroutine, so we don't want any operation to proceed before the server is properly initialized which would cause the `connection refused` error when clients try to connect.
 
-The signalChan blocks the main goroutine from exiting until an os interrupt of shutdown signal is sent by the user. Once a shutown signal is received, the signalchan channel is closed sending a signal to the Quit channel to call the ShutDown method to close the server.
+The signalChan blocks the main goroutine from exiting until an os interrupt or shutdown signal is sent by the user, in this case pressing `CTRL-C`. Once a shutown signal is received, the signalChan channel unblocks the main goroutine, this sends a signal to the Quit channel to close the server.
 
 Each connection is handled separately in its own goroutine, similar to how golang http server handles connections.
 
