@@ -90,17 +90,6 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 			break
 		}
 
-		// respBody := []byte("Hello World!\n")
-
-		// response.AddHeader("Content-Type", "text/plain")
-		// response.AddHeader("Accept-Ranges", "bytes")
-		// response.AddHeader("Connection", "keep-alive")
-
-		// if err := response.Send(respBody, http.HTTP_200_OK); err != nil {
-		//	logger.Warn("Error writing response", "error", err)
-		//	break
-		// }
-
 		srv.processStaticPath(response, request)
 		return
 	}
