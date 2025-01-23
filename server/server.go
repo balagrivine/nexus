@@ -84,11 +84,12 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 		response := http.GetResponseWriter(conn)
 		_, err = http.Decode(data)
 		if err != nil {
+			response.AddHeader("Content-Type", "text/plain")
 			response.Send([]byte("Invalid Method"), http.HTTP_405_NOT_ALLOWED)
 			break
 		}
 
-		respBody := []byte("Hello World!")
+		respBody := []byte("Hello World!\n")
 
 		response.AddHeader("Content-Type", "text/plain")
 		response.AddHeader("Accept-Ranges", "bytes")

@@ -43,9 +43,8 @@ func (r *Response) AddHeader(key string, value string) {
 }
 
 func (r *Response) write(content []byte) error {
-	data := encode(content, r.status, r.headers)
-	
-	_, err := r.conn.Write(data)
+	response := encode(content, r.status, r.headers)
+	_, err := r.conn.Write(response)
 	if err != nil {
 		return err
 	}
@@ -58,6 +57,7 @@ func (r *Response) Send(content []byte, status HTTPStatus) error {
 	if err := r.write(content); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -74,7 +74,6 @@ func encode(data []byte, status HTTPStatus, headers map[string]string) []byte {
 	response = append(response, CRLF...)
 	response = append(response, data...)
 
-	fmt.Println(string(response))
 	return response
 }
 
@@ -83,5 +82,4 @@ func appendHeaders(response *[]byte, headers map[string]string) {
 		header := fmt.Sprintf("%s: %s\r\n", key, val)
 		*response = append(*response, []byte(header)...)
 	}
-	fmt.Println(headers)
 }
