@@ -1,8 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"errors"
-	_ "fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net"
@@ -82,57 +83,81 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 
 		data := buffer[:bytesRead]
 		response := http.GetResponseWriter(conn)
-		_, err = http.Decode(data)
+		request, err := http.Decode(data)
 		if err != nil {
 			response.AddHeader("Content-Type", "text/plain")
-			response.Send([]byte("Invalid Method"), http.HTTP_405_NOT_ALLOWED)
+			response.Send([]byte("Invalid Method\n"), http.HTTP_405_NOT_ALLOWED)
 			break
 		}
 
-		respBody := []byte("Hello World!\n")
+		// respBody := []byte("Hello World!\n")
 
-		response.AddHeader("Content-Type", "text/plain")
-		response.AddHeader("Accept-Ranges", "bytes")
-		response.AddHeader("Connection", "keep-alive")
+		// response.AddHeader("Content-Type", "text/plain")
+		// response.AddHeader("Accept-Ranges", "bytes")
+		// response.AddHeader("Connection", "keep-alive")
 
-		if err := response.Send(respBody, http.HTTP_200_OK); err != nil {
-			logger.Warn("Error writing response", "error", err)
-			break
-		}
+		// if err := response.Send(respBody, http.HTTP_200_OK); err != nil {
+		//	logger.Warn("Error writing response", "error", err)
+		//	break
+		// }
+
+		srv.processStaticPath(response, request)
 		return
 	}
 }
 
-func processFilePath(path string) (*os.File, int64, string, error) {
+func (srv *HTTPServer) processStaticPath(response *http.Response, request *http.Request) {
+	file, contentType, err := srv.processFilePath(request.Path)
+	if err != nil {
+		response.Send([]byte("404 Not Found\n"), http.HTTP_404_NOT_FOUND)
+		return
+	}
+	defer file.Close()
+
+	dataBuf := bytes.Buffer{}
+	
+	n, err := io.Copy(&dataBuf, file)
+	if err != nil {
+		response.Send([]byte("500 Internal Server Error\n"), http.HTTP_500_SERVER_ERROR)
+		return
+	}
+
+	response.AddHeader("Content-Type", contentType)
+	response.Send(dataBuf.Bytes()[:n], http.HTTP_200_OK)
+
+	return
+}
+
+func (srv *HTTPServer) processFilePath(path string) (*os.File, string, error) {
 	// Root directory from which to serve files
 	// Any directory access out of the rootDir should not be permitted
-	rootDir := "www"
-
-	cleanPath := filepath.Clean(path)
-	path = filepath.Join(rootDir, cleanPath)
+	rootDir := "static"
 
 	// Serve the default HTML file if only directory name is provided
 	if strings.HasSuffix(path, "/") {
 		path = filepath.Join(path, "index.html")
 	}
 
+	cleanPath := filepath.Clean(path)
+	path = filepath.Join(rootDir, cleanPath)
+
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, 0, "", err
+		return nil, "", err
 	}
-	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil || info.IsDir() {
-		return nil, 0, "", errors.New("Not found")
+		return nil, "", errors.New("not found")
 	}
 
 	contentType := getContentType(path)
-	fileSize := info.Size()
 
-	return file, fileSize, contentType, nil
+	return file, contentType, nil
 }
 
+// getContentType determines the content type of a file based
+// on its extension
 func getContentType(filePath string) string {
 	ext := filepath.Ext(filePath)
 
