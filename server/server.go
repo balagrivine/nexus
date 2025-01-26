@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -77,17 +78,20 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 	for {
 		buffer := make([]byte, 6048)
 		bytesRead, err := conn.Read(buffer)
+		fmt.Println(bytesRead)
 		if err != nil {
-			//TODO
+			logger.Warn("Error reading client request", "error", err)
+			break
 		}
 
 		data := buffer[:bytesRead]
+		fmt.Println(string(data))
 		response := http.GetResponseWriter(conn)
 		request, err := http.Decode(data)
 		if err != nil {
 			response.AddHeader("Content-Type", "text/plain")
 			response.Send([]byte("Invalid Method\n"), http.HTTP_405_NOT_ALLOWED)
-			break
+			return
 		}
 
 		srv.processStaticPath(response, request)

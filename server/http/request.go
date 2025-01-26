@@ -5,6 +5,7 @@ package http
 import (
 	"bytes"
 	"errors"
+	_ "fmt"
 	"io"
 )
 

@@ -100,9 +100,9 @@ To exit the entire system, simply press `CTRL + C` on your keyboard which will s
 # Architecture
 
 ## How nexus supports concurrent connection handling
-Nexus does request handling similar to golang's inbuild http server, by leveraging on goroutines. When the server starts, it listens to connections on the pre-configured address. Three notifying channels(Done, Quit, and signalChan) are initialized. The Done channel is used to notify that the server has successfully started and it can begin accepting connections.
+Nexus does request handling similar to golang's inbuild http server, by leveraging on goroutines. When the server starts, it listens to connections on the pre-configured address. Three notifying channels(Ready, Quit, and signalChan) are initialized. The Ready channel blocks execution until the the server is properly initialized and ready to accept connections.
 
-This is done because connection accepting is done by a goroutine, so we don't want any operation to proceed before the server is properly initialized which would cause the `connection refused` error when clients try to connect.
+This is done because connection accepting is done by a goroutine, so we don't want any operation to proceed before the server is properly initialized which would cause the `connection refused` error when clients try to connect. 
 
 The signalChan blocks the main goroutine from exiting until an os interrupt or shutdown signal is sent by the user, in this case pressing `CTRL-C`. Once a shutown signal is received, the signalChan channel unblocks the main goroutine, this sends a signal to the Quit channel to close the server.
 

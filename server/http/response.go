@@ -29,6 +29,7 @@ func GetResponseWriter(conn net.Conn) *Response {
 		conn: conn,
 		headers: map[string]string {
 			"Server": "nexus (Ubuntu)",
+			"Connection": "keep-alive",
 		},
 		status: HTTP_200_OK,
 	}
