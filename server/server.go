@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/balagrivine/nexus/server/http"
 )
@@ -76,6 +77,9 @@ func (srv *HTTPServer) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
+		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			logger.Error("Error setting up read deadline: ", "error", err)
+		}
 		buffer := make([]byte, 6048)
 		bytesRead, err := conn.Read(buffer)
 		fmt.Println(bytesRead)
