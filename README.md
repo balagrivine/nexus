@@ -11,7 +11,7 @@
 7. [Reference](#reference)
 
 # About
-Nexus is a minimalistic light-weight static HTTP web server built with golang'.
+Nexus is a minimalistic light-weight static HTTP web server built with golang.
 It closely follows the HTTP protocol as described under the [RFC document](https://www.rfc-editor.org/rfc/rfc9110.html).
 
 Eventhough inspired by Caddy and Nginx, Nexus doesn't aim to be as performant as Nginx or easily configurable as Caddy, rather it aim builds upon the fundamental
